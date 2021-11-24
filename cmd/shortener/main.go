@@ -27,13 +27,13 @@ func ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 
 	} else if r.Method == http.MethodGet {
-		shortId, err := strconv.Atoi(strings.Trim(r.RequestURI, "/"))
+		shortID, err := strconv.Atoi(strings.Trim(r.RequestURI, "/"))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		if fullUrl, ok := shortToFull[shortId]; ok {
-			w.Header().Set("Location", fullUrl)
+		if fullURL, ok := shortToFull[shortID]; ok {
+			w.Header().Set("Location", fullURL)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}

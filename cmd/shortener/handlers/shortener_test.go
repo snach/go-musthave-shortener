@@ -140,6 +140,7 @@ func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	h := http.HandlerFunc(ShortenerHandler(map[int]string{1: "https://stepik.org/"}, 2))
 	h.ServeHTTP(w, request)
 	res := w.Result()
+	defer res.Body.Close()
 	assert.Equal(t, 400, res.StatusCode)
 }
 
@@ -148,19 +149,26 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/")))
-	assert.Equal(t, 201, w.Result().StatusCode)
+	res := w.Result()
+	defer res.Body.Close()
+	assert.Equal(t, 201, res.StatusCode)
 
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://stepik.org/")))
-	assert.Equal(t, 201, w.Result().StatusCode)
+	res = w.Result()
+	defer res.Body.Close()
+	assert.Equal(t, 201, res.StatusCode)
 
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://hh.ru/")))
-	assert.Equal(t, 201, w.Result().StatusCode)
+	res = w.Result()
+	defer res.Body.Close()
+	assert.Equal(t, 201, res.StatusCode)
 
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/3", nil))
-	res := w.Result()
+	res = w.Result()
+	defer res.Body.Close()
 
 	assert.Equal(t, 307, res.StatusCode)
 	assert.Equal(t, "https://hh.ru/", res.Header.Get("Location"))

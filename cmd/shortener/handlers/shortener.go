@@ -13,12 +13,12 @@ func NewRouter(shortToFull map[int]string, mapCounter int) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Post("/", CreateShortUrlHandler(shortToFull, mapCounter))
-	r.Get("/{id}", GetFullUrlHandler(shortToFull))
+	r.Post("/", CreateShortURLHandler(shortToFull, mapCounter))
+	r.Get("/{id}", GetFullURLHandler(shortToFull))
 	return r
 }
 
-func CreateShortUrlHandler(shortToFull map[int]string, mapCounter int) http.HandlerFunc {
+func CreateShortURLHandler(shortToFull map[int]string, mapCounter int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			body, err := io.ReadAll(r.Body)
@@ -37,7 +37,7 @@ func CreateShortUrlHandler(shortToFull map[int]string, mapCounter int) http.Hand
 	}
 }
 
-func GetFullUrlHandler(shortToFull map[int]string) http.HandlerFunc {
+func GetFullURLHandler(shortToFull map[int]string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			shortID, err := strconv.Atoi(chi.URLParam(r, "id"))

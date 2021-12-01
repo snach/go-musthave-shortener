@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -136,26 +135,26 @@ func TestCreateShortUrlHandler(t *testing.T) {
 	}
 }
 
-type errReader int
+//type errReader int
+//
+//func (errReader) Read(p []byte) (n int, err error) {
+//	return 0, errors.New("test error")
+//}
 
-func (errReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("test error")
-}
-
-func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
-	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
-	ts := httptest.NewServer(r)
-	defer ts.Close()
-
-	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
-	require.NoError(t, err)
-
-	resp, err := http.DefaultClient.Do(req)
-	require.Contains(t, err.Error(), "test error")
-
-	//assert.Equal(t, 500, resp.StatusCode)
-	assert.Equal(t, resp, resp)
-}
+//func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
+//	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+//	ts := httptest.NewServer(r)
+//	defer ts.Close()
+//
+//	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
+//	require.NoError(t, err)
+//
+//	resp, err := http.DefaultClient.Do(req)
+//	require.Contains(t, err.Error(), "test error")
+//
+//	//assert.Equal(t, 500, resp.StatusCode)
+//	assert.Equal(t, resp, resp)
+//}
 
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)

@@ -12,7 +12,27 @@ import (
 	"testing"
 )
 
-func TestGetMethodShortenerHandler(t *testing.T) {
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, body)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+}
+
+func TestGetFullUrlHandler(t *testing.T) {
 	type want struct {
 		statusCode int
 		location   string
@@ -64,26 +84,21 @@ func TestGetMethodShortenerHandler(t *testing.T) {
 			urlMap:     map[int]string{1: "https://stepik.org/"},
 			mapCounter: 2,
 			want: want{
-				statusCode: 500,
+				statusCode: 405,
 				location:   "",
-				bodyLen:    41,
+				bodyLen:    0,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.url, nil)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(ShortenerHandler(tt.urlMap, tt.mapCounter))
-			h.ServeHTTP(w, request)
-			res := w.Result()
+			r := NewRouter(tt.urlMap, tt.mapCounter)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			res, resBody := testRequest(t, ts, "GET", tt.url, nil)
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
-
-			resBody, err := ioutil.ReadAll(res.Body)
-			require.NoError(t, err)
-			err = res.Body.Close()
-			require.NoError(t, err)
 			assert.Len(t, resBody, tt.want.bodyLen)
 
 			assert.Equal(t, tt.want.location, res.Header.Get("Location"))
@@ -98,7 +113,7 @@ func (errReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("test error")
 }
 
-func TestPostMethodShortenerHandler(t *testing.T) {
+func TestCreateShortUrlHandler(t *testing.T) {
 	tests := []struct {
 		name       string
 		bodyReader io.Reader
@@ -109,68 +124,61 @@ func TestPostMethodShortenerHandler(t *testing.T) {
 			bodyReader: strings.NewReader("https://stackoverflow.com/"),
 			statusCode: 201,
 		},
-		{
-			name:       "negotive test: error in body reader",
-			bodyReader: errReader(0),
-			statusCode: 500,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/", tt.bodyReader)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(ShortenerHandler(map[int]string{1: "https://stepik.org/"}, 2))
-			h.ServeHTTP(w, request)
-			res := w.Result()
+
+			r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			res, resBody := testRequest(t, ts, "POST", "/", tt.bodyReader)
+
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if res.StatusCode == 201 {
-				resBody, err := ioutil.ReadAll(res.Body)
-				require.NoError(t, err)
-				err = res.Body.Close()
-				require.NoError(t, err)
-				assert.Equal(t, "http://localhost:8080/2", string(resBody))
+				assert.Equal(t, "http://localhost:8080/2", resBody)
 			}
 		})
 	}
 }
 
+func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
+	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.Contains(t, err.Error(), "test error")
+
+	assert.Equal(t, 500, resp.StatusCode)
+}
+
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
-	request := httptest.NewRequest(http.MethodHead, "/", nil)
-	w := httptest.NewRecorder()
-	h := http.HandlerFunc(ShortenerHandler(map[int]string{1: "https://stepik.org/"}, 2))
-	h.ServeHTTP(w, request)
-	res := w.Result()
-	defer res.Body.Close()
-	assert.Equal(t, 400, res.StatusCode)
+	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	res, _ := testRequest(t, ts, "HEAD", "/", nil)
+	assert.Equal(t, 405, res.StatusCode)
 }
 
 func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
-	h := http.HandlerFunc(ShortenerHandler(make(map[int]string), 1))
+	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 1)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
 
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/")))
-	res := w.Result()
-	defer res.Body.Close()
+	res, _ := testRequest(t, ts, "POST", "/", strings.NewReader("https://stackoverflow.com/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://stepik.org/")))
-	res = w.Result()
-	defer res.Body.Close()
+	res, _ = testRequest(t, ts, "POST", "/", strings.NewReader("https://stepik.org/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://hh.ru/")))
-	res = w.Result()
-	defer res.Body.Close()
+	res, _ = testRequest(t, ts, "POST", "/", strings.NewReader("https://hh.ru/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/3", nil))
-	res = w.Result()
-	defer res.Body.Close()
-
+	res, _ = testRequest(t, ts, "GET", "/3", nil)
 	assert.Equal(t, 307, res.StatusCode)
 	assert.Equal(t, "https://hh.ru/", res.Header.Get("Location"))
-
 }

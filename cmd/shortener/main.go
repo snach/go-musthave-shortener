@@ -10,7 +10,5 @@ func main() {
 	var shortToFull = make(map[int]string)
 	var mapCounter = 1
 
-	http.HandleFunc("/", handlers.ShortenerHandler(shortToFull, mapCounter))
-
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", handlers.NewRouter(shortToFull, mapCounter)))
 }

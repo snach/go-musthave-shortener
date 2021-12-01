@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -95,7 +96,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			res, resBody := testRequest(t, ts, "GET", tt.url, nil)
+			res, resBody := testRequest(t, ts, http.MethodGet, tt.url, nil)
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Len(t, resBody, tt.want.bodyLen)
@@ -125,7 +126,7 @@ func TestCreateShortUrlHandler(t *testing.T) {
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			res, resBody := testRequest(t, ts, "POST", "/", tt.bodyReader)
+			res, resBody := testRequest(t, ts, http.MethodPost, "/", tt.bodyReader)
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if res.StatusCode == 201 {
@@ -135,32 +136,32 @@ func TestCreateShortUrlHandler(t *testing.T) {
 	}
 }
 
-//type errReader int
-//
-//func (errReader) Read(p []byte) (n int, err error) {
-//	return 0, errors.New("test error")
-//}
+type errReader int
 
-//func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
-//	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
-//	ts := httptest.NewServer(r)
-//	defer ts.Close()
-//
-//	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
-//	require.NoError(t, err)
-//
-//	resp, err := http.DefaultClient.Do(req)
-//	require.Contains(t, err.Error(), "test error")
-//
-//	//assert.Equal(t, 500, resp.StatusCode)
-//	assert.Equal(t, resp, resp)
-//}
+func (errReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("test error")
+}
+
+func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
+	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.Contains(t, err.Error(), "test error")
+
+	//assert.Equal(t, 500, resp.StatusCode)
+	assert.Equal(t, resp, resp)
+}
 
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
-	res, _ := testRequest(t, ts, "HEAD", "/", nil)
+	res, _ := testRequest(t, ts, http.MethodHead, "/", nil)
 	assert.Equal(t, 405, res.StatusCode)
 }
 
@@ -169,16 +170,16 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, _ := testRequest(t, ts, "POST", "/", strings.NewReader("https://stackoverflow.com/"))
+	res, _ := testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	res, _ = testRequest(t, ts, "POST", "/", strings.NewReader("https://stepik.org/"))
+	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stepik.org/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	res, _ = testRequest(t, ts, "POST", "/", strings.NewReader("https://hh.ru/"))
+	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://hh.ru/"))
 	assert.Equal(t, 201, res.StatusCode)
 
-	res, _ = testRequest(t, ts, "GET", "/3", nil)
+	res, _ = testRequest(t, ts, http.MethodGet, "/3", nil)
 	assert.Equal(t, 307, res.StatusCode)
 	assert.Equal(t, "https://hh.ru/", res.Header.Get("Location"))
 }

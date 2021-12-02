@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -26,8 +25,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
-
-	defer resp.Body.Close()
 
 	return resp, string(respBody)
 }
@@ -97,6 +94,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 			defer ts.Close()
 
 			res, resBody := testRequest(t, ts, http.MethodGet, tt.url, nil)
+			defer res.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Len(t, resBody, tt.want.bodyLen)
@@ -127,6 +125,7 @@ func TestCreateShortUrlHandler(t *testing.T) {
 			defer ts.Close()
 
 			res, resBody := testRequest(t, ts, http.MethodPost, "/", tt.bodyReader)
+			defer res.Body.Close()
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if res.StatusCode == 201 {
@@ -136,32 +135,12 @@ func TestCreateShortUrlHandler(t *testing.T) {
 	}
 }
 
-type errReader int
-
-func (errReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("test error")
-}
-
-func TestCreateShortUrlErrorBodyReaderHandler(t *testing.T) {
-	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
-	ts := httptest.NewServer(r)
-	defer ts.Close()
-
-	req, err := http.NewRequest("POST", ts.URL+"/", errReader(0))
-	require.NoError(t, err)
-
-	resp, err := http.DefaultClient.Do(req)
-	require.Contains(t, err.Error(), "test error")
-
-	//assert.Equal(t, 500, resp.StatusCode)
-	assert.Equal(t, resp, resp)
-}
-
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	res, _ := testRequest(t, ts, http.MethodHead, "/", nil)
+	defer res.Body.Close()
 	assert.Equal(t, 405, res.StatusCode)
 }
 
@@ -171,15 +150,19 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 	defer ts.Close()
 
 	res, _ := testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/"))
+	defer res.Body.Close()
 	assert.Equal(t, 201, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stepik.org/"))
+	defer res.Body.Close()
 	assert.Equal(t, 201, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://hh.ru/"))
+	defer res.Body.Close()
 	assert.Equal(t, 201, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodGet, "/3", nil)
+	defer res.Body.Close()
 	assert.Equal(t, 307, res.StatusCode)
 	assert.Equal(t, "https://hh.ru/", res.Header.Get("Location"))
 }

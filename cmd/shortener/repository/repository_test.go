@@ -10,28 +10,28 @@ func TestGetRepository(t *testing.T) {
 		name       string
 		storage    map[int]string
 		shortUrlId string
-		fullUrl    string
+		fullURL    string
 		isErr      bool
 	}{
 		{
 			name:       "positive test: exist url in storage",
 			storage:    map[int]string{1: "https://stepik.org/"},
 			shortUrlId: "1",
-			fullUrl:    "https://stepik.org/",
+			fullURL:    "https://stepik.org/",
 			isErr:      false,
 		},
 		{
 			name:       "negative test: bad index in url",
 			storage:    map[int]string{1: "https://stepik.org/"},
 			shortUrlId: "abc",
-			fullUrl:    "",
+			fullURL:    "",
 			isErr:      true,
 		},
 		{
 			name:       "negative test: no url in storage",
 			storage:    map[int]string{1: "https://stepik.org/"},
 			shortUrlId: "2",
-			fullUrl:    "",
+			fullURL:    "",
 			isErr:      true,
 		},
 	}
@@ -39,7 +39,7 @@ func TestGetRepository(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := Repository{Storage: tt.storage, CurrentInd: 0}
 			fullUrl, err := repo.Get(tt.shortUrlId)
-			assert.Equal(t, tt.fullUrl, fullUrl)
+			assert.Equal(t, tt.fullURL, fullUrl)
 			if tt.isErr {
 				assert.NotNil(t, err)
 			} else {

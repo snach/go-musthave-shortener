@@ -43,14 +43,14 @@ func TestGetFullUrlHandler(t *testing.T) {
 	tests := []struct {
 		name         string
 		url          string
-		repoGetUrl   string
+		repoGetURL   string
 		repoGetError error
 		want         want
 	}{
 		{
 			name:         "positive test: exist url in urlMap",
 			url:          "/1",
-			repoGetUrl:   "https://stepik.org/",
+			repoGetURL:   "https://stepik.org/",
 			repoGetError: nil,
 			want: want{
 				statusCode: 307,
@@ -61,7 +61,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 		{
 			name:         "negative test: error from storage",
 			url:          "/100",
-			repoGetUrl:   "",
+			repoGetURL:   "",
 			repoGetError: errors.New("No full url for short url index 100"),
 			want: want{
 				statusCode: 400,
@@ -82,7 +82,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
-			repo.On("Get", mock.Anything).Return(tt.repoGetUrl, tt.repoGetError)
+			repo.On("Get", mock.Anything).Return(tt.repoGetURL, tt.repoGetError)
 			r := NewRouter(repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()

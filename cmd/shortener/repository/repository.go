@@ -16,8 +16,8 @@ type Repository struct {
 	CurrentInd int
 }
 
-func (r *Repository) Get(shortUrlId string) (string, error) {
-	shortID, err := strconv.Atoi(shortUrlId)
+func (r *Repository) Get(shortURLID string) (string, error) {
+	shortID, err := strconv.Atoi(shortURLID)
 	if err != nil {
 		return "", err
 	}
@@ -25,7 +25,7 @@ func (r *Repository) Get(shortUrlId string) (string, error) {
 	if fullURL, ok := r.Storage[shortID]; ok {
 		return fullURL, nil
 	} else {
-		return "", errors.New("No full url for short url index " + shortUrlId)
+		return "", errors.New("No full url for short url index " + shortURLID)
 	}
 
 }

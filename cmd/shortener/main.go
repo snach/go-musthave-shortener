@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"snach/go-musthave-shortener/cmd/shortener/handlers"
 	"snach/go-musthave-shortener/cmd/shortener/repository"
+	"syscall"
 	"time"
 )
 
@@ -48,7 +49,7 @@ func main() {
 	}
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {

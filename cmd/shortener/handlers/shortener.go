@@ -49,12 +49,12 @@ func GetFullURLHandler(repo repository.Repositorier) http.HandlerFunc {
 			return
 		}
 
-		fullUrl, err := repo.Get(chi.URLParam(r, "id"))
+		fullURL, err := repo.Get(chi.URLParam(r, "id"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		w.Header().Set("Location", fullUrl)
+		w.Header().Set("Location", fullURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
 	}

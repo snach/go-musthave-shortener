@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"snach/go-musthave-shortener/cmd/shortener/repository"
+	"snach/go-musthave-shortener/cmd/shortener/repository/mocks"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -36,17 +41,17 @@ func TestGetFullUrlHandler(t *testing.T) {
 		bodyLen    int
 	}
 	tests := []struct {
-		name       string
-		url        string
-		urlMap     map[int]string
-		mapCounter int
-		want       want
+		name         string
+		url          string
+		repoGetUrl   string
+		repoGetError error
+		want         want
 	}{
 		{
-			name:       "positive test: exist url in urlMap",
-			url:        "/1",
-			urlMap:     map[int]string{1: "https://stepik.org/"},
-			mapCounter: 2,
+			name:         "positive test: exist url in urlMap",
+			url:          "/1",
+			repoGetUrl:   "https://stepik.org/",
+			repoGetError: nil,
 			want: want{
 				statusCode: 307,
 				location:   "https://stepik.org/",
@@ -54,32 +59,19 @@ func TestGetFullUrlHandler(t *testing.T) {
 			},
 		},
 		{
-			name:       "negative test: no url in urlMap",
-			url:        "/100",
-			urlMap:     map[int]string{1: "https://stepik.org/"},
-			mapCounter: 2,
+			name:         "negative test: error from storage",
+			url:          "/100",
+			repoGetUrl:   "",
+			repoGetError: errors.New("No full url for short url index 100"),
 			want: want{
 				statusCode: 400,
 				location:   "",
-				bodyLen:    0,
+				bodyLen:    36,
 			},
 		},
 		{
-			name:       "negative test: bad index in url",
-			url:        "/abc",
-			urlMap:     map[int]string{1: "https://stepik.org/"},
-			mapCounter: 2,
-			want: want{
-				statusCode: 500,
-				location:   "",
-				bodyLen:    44,
-			},
-		},
-		{
-			name:       "negative test: no index in url",
-			url:        "/",
-			urlMap:     map[int]string{1: "https://stepik.org/"},
-			mapCounter: 2,
+			name: "negative test: no index in url",
+			url:  "/",
 			want: want{
 				statusCode: 405,
 				location:   "",
@@ -89,7 +81,9 @@ func TestGetFullUrlHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter(tt.urlMap, tt.mapCounter)
+			repo := new(mocks.RepositorierMock)
+			repo.On("Get", mock.Anything).Return(tt.repoGetUrl, tt.repoGetError)
+			r := NewRouter(repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -109,18 +103,21 @@ func TestCreateShortUrlHandler(t *testing.T) {
 	tests := []struct {
 		name       string
 		bodyReader io.Reader
+		savedIndex int
 		statusCode int
 	}{
 		{
-			name:       "positive test",
+			name:       "positive test: save url to storage",
 			bodyReader: strings.NewReader("https://stackoverflow.com/"),
+			savedIndex: 2,
 			statusCode: 201,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+			repo := new(mocks.RepositorierMock)
+			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
+			r := NewRouter(repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -129,14 +126,15 @@ func TestCreateShortUrlHandler(t *testing.T) {
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if res.StatusCode == 201 {
-				assert.Equal(t, "http://localhost:8080/2", resBody)
+				assert.Equal(t, "http://localhost:8080/"+strconv.Itoa(tt.savedIndex), resBody)
 			}
 		})
 	}
 }
 
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
-	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 2)
+	repo := new(mocks.RepositorierMock)
+	r := NewRouter(repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	res, _ := testRequest(t, ts, http.MethodHead, "/", nil)
@@ -145,7 +143,11 @@ func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 }
 
 func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
-	r := NewRouter(map[int]string{1: "https://stepik.org/"}, 1)
+	repo := repository.Repository{
+		Storage:    make(map[int]string),
+		CurrentInd: 0,
+	}
+	r := NewRouter(&repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

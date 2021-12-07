@@ -7,16 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"snach/go-musthave-shortener/cmd/shortener/handlers"
+	"snach/go-musthave-shortener/cmd/shortener/repository"
 	"time"
 )
 
-var shortToFull = make(map[int]string)
-var mapCounter = 1
-
-func serve(ctx context.Context) (err error) {
+func serve(ctx context.Context, repo repository.Repositorier) (err error) {
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: handlers.NewRouter(shortToFull, mapCounter),
+		Handler: handlers.NewRouter(repo),
 	}
 
 	go func() {
@@ -44,6 +42,10 @@ func serve(ctx context.Context) (err error) {
 }
 
 func main() {
+	repo := repository.Repository{
+		Storage:    make(map[int]string),
+		CurrentInd: 0,
+	}
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
@@ -54,7 +56,7 @@ func main() {
 		cancel()
 	}()
 
-	if err := serve(ctx); err != nil {
+	if err := serve(ctx, &repo); err != nil {
 		log.Printf("failed to serve:+%v\n", err)
 	}
 }

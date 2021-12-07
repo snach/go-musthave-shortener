@@ -9,20 +9,20 @@ type RepositorierMock struct {
 	mock.Mock
 }
 
-// Get provides a mock function with given fields: shortUrlId
-func (_m *RepositorierMock) Get(shortUrlId string) (string, error) {
-	ret := _m.Called(shortUrlId)
+// Get provides a mock function with given fields: shortURLID
+func (_m *RepositorierMock) Get(shortURLID string) (string, error) {
+	ret := _m.Called(shortURLID)
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(shortUrlId)
+		r0 = rf(shortURLID)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(shortUrlId)
+		r1 = rf(shortURLID)
 	} else {
 		r1 = ret.Error(1)
 	}

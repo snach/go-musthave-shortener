@@ -7,7 +7,7 @@ import (
 
 //go:generate mockery --name=Repositorier --structname=RepositorierMock
 type Repositorier interface {
-	Get(shortUrlId string) (string, error)
+	Get(shortURLID string) (string, error)
 	Save(url string) (int, error)
 }
 

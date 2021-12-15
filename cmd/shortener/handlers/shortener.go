@@ -13,7 +13,7 @@ import (
 )
 
 type Settings struct {
-	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080/"`
+	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 }
 
 func NewRouter(repo repository.Repositorier) chi.Router {
@@ -51,7 +51,7 @@ func CreateShortURLHandler(repo repository.Repositorier, settings Settings) http
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "%s%d", settings.BaseURL, index)
+		fmt.Fprintf(w, "%s/%d", settings.BaseURL, index)
 	}
 }
 
@@ -92,7 +92,7 @@ func CreateShortURLJSONHandler(repo repository.Repositorier, settings Settings) 
 			return
 		}
 
-		response := ResponseCreateShortURLJSON{Result: settings.BaseURL + strconv.Itoa(index)}
+		response := ResponseCreateShortURLJSON{Result: settings.BaseURL + "/" + strconv.Itoa(index)}
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

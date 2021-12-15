@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
@@ -11,17 +12,26 @@ import (
 	"strconv"
 )
 
+type Settings struct {
+	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080/"`
+}
+
 func NewRouter(repo repository.Repositorier) chi.Router {
+	var settings Settings
+	if err := env.Parse(&settings); err != nil {
+		panic(err)
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Post("/", CreateShortURLHandler(repo))
-	r.Post("/api/shorten", CreateShortURLJSONHandler(repo))
+	r.Post("/", CreateShortURLHandler(repo, settings))
+	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, settings))
 	r.Get("/{id}", GetFullURLHandler(repo))
 	return r
 }
 
-func CreateShortURLHandler(repo repository.Repositorier) http.HandlerFunc {
+func CreateShortURLHandler(repo repository.Repositorier, settings Settings) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -41,7 +51,7 @@ func CreateShortURLHandler(repo repository.Repositorier) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "http://localhost:8080/%d", index)
+		fmt.Fprintf(w, "%s%d", settings.BaseURL, index)
 	}
 }
 
@@ -53,7 +63,7 @@ type ResponseCreateShortURLJSON struct {
 	Result string `json:"result"`
 }
 
-func CreateShortURLJSONHandler(repo repository.Repositorier) http.HandlerFunc {
+func CreateShortURLJSONHandler(repo repository.Repositorier, settings Settings) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -82,7 +92,7 @@ func CreateShortURLJSONHandler(repo repository.Repositorier) http.HandlerFunc {
 			return
 		}
 
-		response := ResponseCreateShortURLJSON{Result: "http://localhost:8080/" + strconv.Itoa(index)}
+		response := ResponseCreateShortURLJSON{Result: settings.BaseURL + strconv.Itoa(index)}
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

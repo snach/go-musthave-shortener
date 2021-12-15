@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/caarlos0/env/v6"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,17 @@ import (
 	"time"
 )
 
+type ServerConfig struct {
+	ServerAddress string `env:"SERVER_ADDRESS" envDefault:":8080"`
+}
+
 func serve(ctx context.Context, repo repository.Repositorier) (err error) {
+	var conf ServerConfig
+	if err := env.Parse(&conf); err != nil {
+		panic(err)
+	}
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    conf.ServerAddress,
 		Handler: handlers.NewRouter(repo),
 	}
 

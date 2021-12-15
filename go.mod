@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/caarlos0/env/v6 v6.8.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

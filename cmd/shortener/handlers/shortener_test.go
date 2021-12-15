@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -127,6 +128,48 @@ func TestCreateShortUrlHandler(t *testing.T) {
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if res.StatusCode == 201 {
 				assert.Equal(t, "http://localhost:8080/"+strconv.Itoa(tt.savedIndex), resBody)
+			}
+		})
+	}
+}
+
+func TestCreateShortURLJSONHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		bodyReader io.Reader
+		savedIndex int
+		statusCode int
+	}{
+		{
+			name:       "positive test: save url from json request to storage",
+			bodyReader: bytes.NewReader([]byte(`{"url":"https://stackoverflow.com/"}`)),
+			savedIndex: 1,
+			statusCode: 201,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mocks.RepositorierMock)
+			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
+			r := NewRouter(repo)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/shorten", tt.bodyReader)
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			assert.NoError(t, err)
+			defer resp.Body.Close()
+
+			respBody, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.statusCode, resp.StatusCode)
+			if resp.StatusCode == 201 {
+				assert.Equal(t, "{\"result\":\"http://localhost:8080/1\"}", string(respBody))
 			}
 		})
 	}

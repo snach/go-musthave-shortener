@@ -46,7 +46,7 @@ func CreateShortURLHandler(repo repository.Repositorier) http.HandlerFunc {
 }
 
 type RequestCreateShortURLJSON struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 type ResponseCreateShortURLJSON struct {
@@ -76,7 +76,7 @@ func CreateShortURLJSONHandler(repo repository.Repositorier) http.HandlerFunc {
 			return
 		}
 
-		index, err := repo.Save(request.Url)
+		index, err := repo.Save(request.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

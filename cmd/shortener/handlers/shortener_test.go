@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -189,14 +190,17 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 	repo := repository.Repository{
 		Storage:    make(map[int]string),
 		CurrentInd: 0,
+		FileName:   "test_file.txt",
 	}
 	r := NewRouter(&repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, _ := testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/"))
+	res, body := testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/"))
 	defer res.Body.Close()
 	assert.Equal(t, 201, res.StatusCode)
+
+	fmt.Println(body)
 
 	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stepik.org/"))
 	defer res.Body.Close()

@@ -11,12 +11,12 @@ import (
 	"strconv"
 )
 
-func NewRouter(baseUrl string, repo repository.Repositorier) chi.Router {
+func NewRouter(baseURL string, repo repository.Repositorier) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Post("/", CreateShortURLHandler(repo, baseUrl))
-	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, baseUrl))
+	r.Post("/", CreateShortURLHandler(repo, baseURL))
+	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, baseURL))
 	r.Get("/{id}", GetFullURLHandler(repo))
 	return r
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
@@ -12,26 +11,17 @@ import (
 	"strconv"
 )
 
-type Settings struct {
-	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080"`
-}
-
-func NewRouter(repo repository.Repositorier) chi.Router {
-	var settings Settings
-	if err := env.Parse(&settings); err != nil {
-		panic(err)
-	}
-
+func NewRouter(baseUrl string, repo repository.Repositorier) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Post("/", CreateShortURLHandler(repo, settings))
-	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, settings))
+	r.Post("/", CreateShortURLHandler(repo, baseUrl))
+	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, baseUrl))
 	r.Get("/{id}", GetFullURLHandler(repo))
 	return r
 }
 
-func CreateShortURLHandler(repo repository.Repositorier, settings Settings) http.HandlerFunc {
+func CreateShortURLHandler(repo repository.Repositorier, baseUrl string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -51,7 +41,7 @@ func CreateShortURLHandler(repo repository.Repositorier, settings Settings) http
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "%s/%d", settings.BaseURL, index)
+		fmt.Fprintf(w, "%s/%d", baseUrl, index)
 	}
 }
 
@@ -63,7 +53,7 @@ type ResponseCreateShortURLJSON struct {
 	Result string `json:"result"`
 }
 
-func CreateShortURLJSONHandler(repo repository.Repositorier, settings Settings) http.HandlerFunc {
+func CreateShortURLJSONHandler(repo repository.Repositorier, baseUrl string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -92,7 +82,7 @@ func CreateShortURLJSONHandler(repo repository.Repositorier, settings Settings) 
 			return
 		}
 
-		response := ResponseCreateShortURLJSON{Result: settings.BaseURL + "/" + strconv.Itoa(index)}
+		response := ResponseCreateShortURLJSON{Result: baseUrl + "/" + strconv.Itoa(index)}
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

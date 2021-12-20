@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/caarlos0/env/v6"
 	"log"
 	"net/http"
@@ -16,11 +17,30 @@ import (
 type ServerConfig struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"storage.txt"`
+	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
+}
+
+func makeConf() (ServerConfig, error) {
+	var conf ServerConfig
+	if err := env.Parse(&conf); err != nil {
+		return ServerConfig{}, err
+	}
+
+	address := flag.String("a", conf.ServerAddress, "address server (or env var SERVER_ADDRESS)")
+	fileStoragePath := flag.String("f", conf.FileStoragePath, "path to storage file (or env var FILE_STORAGE_PATH)")
+	baseUrl := flag.String("b", conf.BaseURL, "base url ajh shortened link (or env var BASE_URL)")
+	flag.Parse()
+
+	return ServerConfig{
+		ServerAddress:   *address,
+		FileStoragePath: *fileStoragePath,
+		BaseURL:         *baseUrl,
+	}, nil
 }
 
 func serve(ctx context.Context) (err error) {
-	var conf ServerConfig
-	if err := env.Parse(&conf); err != nil {
+	conf, err := makeConf()
+	if err != nil {
 		panic(err)
 	}
 
@@ -28,9 +48,10 @@ func serve(ctx context.Context) (err error) {
 	if err != nil {
 		panic(err)
 	}
+
 	srv := &http.Server{
 		Addr:    conf.ServerAddress,
-		Handler: handlers.NewRouter(repo),
+		Handler: handlers.NewRouter(conf.BaseURL, repo),
 	}
 
 	go func() {

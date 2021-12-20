@@ -85,7 +85,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
 			repo.On("Get", mock.Anything).Return(tt.repoGetURL, tt.repoGetError)
-			r := NewRouter(repo)
+			r := NewRouter("http://localhost:8080", repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -119,7 +119,7 @@ func TestCreateShortUrlHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
 			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
-			r := NewRouter(repo)
+			r := NewRouter("http://localhost:8080", repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -152,7 +152,7 @@ func TestCreateShortURLJSONHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
 			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
-			r := NewRouter(repo)
+			r := NewRouter("http://localhost:8080", repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -178,7 +178,7 @@ func TestCreateShortURLJSONHandler(t *testing.T) {
 
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	repo := new(mocks.RepositorierMock)
-	r := NewRouter(repo)
+	r := NewRouter("http://localhost:8080", repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	res, _ := testRequest(t, ts, http.MethodHead, "/", nil)
@@ -192,7 +192,7 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 		CurrentInd: 0,
 		FileName:   "test_file.txt",
 	}
-	r := NewRouter(&repo)
+	r := NewRouter("http://localhost:8080", &repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

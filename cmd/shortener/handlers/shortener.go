@@ -21,7 +21,7 @@ func NewRouter(baseURL string, repo repository.Repositorier) chi.Router {
 	return r
 }
 
-func CreateShortURLHandler(repo repository.Repositorier, baseUrl string) http.HandlerFunc {
+func CreateShortURLHandler(repo repository.Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -41,7 +41,7 @@ func CreateShortURLHandler(repo repository.Repositorier, baseUrl string) http.Ha
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "%s/%d", baseUrl, index)
+		fmt.Fprintf(w, "%s/%d", baseURL, index)
 	}
 }
 
@@ -53,7 +53,7 @@ type ResponseCreateShortURLJSON struct {
 	Result string `json:"result"`
 }
 
-func CreateShortURLJSONHandler(repo repository.Repositorier, baseUrl string) http.HandlerFunc {
+func CreateShortURLJSONHandler(repo repository.Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -82,7 +82,7 @@ func CreateShortURLJSONHandler(repo repository.Repositorier, baseUrl string) htt
 			return
 		}
 
-		response := ResponseCreateShortURLJSON{Result: baseUrl + "/" + strconv.Itoa(index)}
+		response := ResponseCreateShortURLJSON{Result: baseURL + "/" + strconv.Itoa(index)}
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

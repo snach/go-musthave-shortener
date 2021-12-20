@@ -28,13 +28,13 @@ func makeConf() (ServerConfig, error) {
 
 	address := flag.String("a", conf.ServerAddress, "address server (or env var SERVER_ADDRESS)")
 	fileStoragePath := flag.String("f", conf.FileStoragePath, "path to storage file (or env var FILE_STORAGE_PATH)")
-	baseUrl := flag.String("b", conf.BaseURL, "base url ajh shortened link (or env var BASE_URL)")
+	baseURL := flag.String("b", conf.BaseURL, "base url ajh shortened link (or env var BASE_URL)")
 	flag.Parse()
 
 	return ServerConfig{
 		ServerAddress:   *address,
 		FileStoragePath: *fileStoragePath,
-		BaseURL:         *baseUrl,
+		BaseURL:         *baseURL,
 	}, nil
 }
 

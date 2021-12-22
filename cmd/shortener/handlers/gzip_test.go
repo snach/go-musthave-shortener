@@ -32,6 +32,7 @@ func TestGzipInRequestHandler(t *testing.T) {
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	resp.Body.Close()
 	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)

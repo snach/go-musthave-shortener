@@ -16,15 +16,6 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-//type gzipBodyReader struct {
-//	http.Request
-//	Reader io.ReadCloser
-//}
-//
-//func (r gzipBodyReader) Read(b []byte) (n int, err error){
-//	return r.Reader.Read(b)
-//}
-
 func gzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -32,7 +23,7 @@ func gzipHandle(next http.Handler) http.Handler {
 			var err error
 			r.Body, err = gzip.NewReader(r.Body)
 			if err != nil {
-				io.WriteString(w, err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
@@ -44,7 +35,7 @@ func gzipHandle(next http.Handler) http.Handler {
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			io.WriteString(w, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer gz.Close()

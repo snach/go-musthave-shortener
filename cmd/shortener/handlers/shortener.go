@@ -15,6 +15,7 @@ func NewRouter(baseURL string, repo repository.Repositorier) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(gzipHandle)
 	r.Post("/", CreateShortURLHandler(repo, baseURL))
 	r.Post("/api/shorten", CreateShortURLJSONHandler(repo, baseURL))
 	r.Get("/{id}", GetFullURLHandler(repo))

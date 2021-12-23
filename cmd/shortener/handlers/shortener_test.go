@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"snach/go-musthave-shortener/cmd/shortener/repository"
 	"snach/go-musthave-shortener/cmd/shortener/repository/mocks"
 	"strconv"
@@ -191,6 +192,7 @@ func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 		CurrentInd: 0,
 		FileName:   "test_file.txt",
 	}
+	defer os.Remove(repo.FileName)
 	r := NewRouter(testBaseURL, &repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()

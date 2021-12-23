@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"testing"
 )
+
+const testBaseURL = "http://localhost:8080"
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, body)
@@ -53,7 +56,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 			repoGetURL:   "https://stepik.org/",
 			repoGetError: nil,
 			want: want{
-				statusCode: 307,
+				statusCode: http.StatusTemporaryRedirect,
 				location:   "https://stepik.org/",
 				bodyLen:    0,
 			},
@@ -64,7 +67,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 			repoGetURL:   "",
 			repoGetError: errors.New("No full url for short url index 100"),
 			want: want{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 				location:   "",
 				bodyLen:    36,
 			},
@@ -73,7 +76,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 			name: "negative test: no index in url",
 			url:  "/",
 			want: want{
-				statusCode: 405,
+				statusCode: http.StatusMethodNotAllowed,
 				location:   "",
 				bodyLen:    0,
 			},
@@ -83,7 +86,7 @@ func TestGetFullUrlHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
 			repo.On("Get", mock.Anything).Return(tt.repoGetURL, tt.repoGetError)
-			r := NewRouter(repo)
+			r := NewRouter(testBaseURL, repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -110,14 +113,14 @@ func TestCreateShortUrlHandler(t *testing.T) {
 			name:       "positive test: save url to storage",
 			bodyReader: strings.NewReader("https://stackoverflow.com/"),
 			savedIndex: 2,
-			statusCode: 201,
+			statusCode: http.StatusCreated,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.RepositorierMock)
 			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
-			r := NewRouter(repo)
+			r := NewRouter(testBaseURL, repo)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -125,46 +128,87 @@ func TestCreateShortUrlHandler(t *testing.T) {
 			defer res.Body.Close()
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
-			if res.StatusCode == 201 {
-				assert.Equal(t, "http://localhost:8080/"+strconv.Itoa(tt.savedIndex), resBody)
-			}
+			assert.Equal(t, testBaseURL+"/"+strconv.Itoa(tt.savedIndex), resBody)
+
+		})
+	}
+}
+
+func TestCreateShortURLJSONHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		bodyReader io.Reader
+		savedIndex int
+		statusCode int
+	}{
+		{
+			name:       "positive test: save url from json request to storage",
+			bodyReader: bytes.NewReader([]byte(`{"url":"https://stackoverflow.com/"}`)),
+			savedIndex: 1,
+			statusCode: http.StatusCreated,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mocks.RepositorierMock)
+			repo.On("Save", mock.Anything).Return(tt.savedIndex, nil)
+			r := NewRouter(testBaseURL, repo)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/shorten", tt.bodyReader)
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			assert.NoError(t, err)
+			defer resp.Body.Close()
+
+			respBody, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.statusCode, resp.StatusCode)
+			assert.Equal(t, "{\"result\":\""+testBaseURL+"/1\"}", string(respBody))
+
 		})
 	}
 }
 
 func TestUnsupportedMethodShortenerHandler(t *testing.T) {
 	repo := new(mocks.RepositorierMock)
-	r := NewRouter(repo)
+	r := NewRouter(testBaseURL, repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	res, _ := testRequest(t, ts, http.MethodHead, "/", nil)
 	defer res.Body.Close()
-	assert.Equal(t, 405, res.StatusCode)
+	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
 }
 
 func TestIntegrationMapCounterIncrementShortenerHandler(t *testing.T) {
 	repo := repository.Repository{
 		Storage:    make(map[int]string),
 		CurrentInd: 0,
+		FileName:   "test_file.txt",
 	}
-	r := NewRouter(&repo)
+	r := NewRouter(testBaseURL, &repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
 	res, _ := testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stackoverflow.com/"))
 	defer res.Body.Close()
-	assert.Equal(t, 201, res.StatusCode)
+	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://stepik.org/"))
 	defer res.Body.Close()
-	assert.Equal(t, 201, res.StatusCode)
+	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodPost, "/", strings.NewReader("https://hh.ru/"))
 	defer res.Body.Close()
-	assert.Equal(t, 201, res.StatusCode)
+	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
 	res, _ = testRequest(t, ts, http.MethodGet, "/3", nil)
 	defer res.Body.Close()
-	assert.Equal(t, 307, res.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, res.StatusCode)
 	assert.Equal(t, "https://hh.ru/", res.Header.Get("Location"))
 }

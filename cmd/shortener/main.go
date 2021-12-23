@@ -6,16 +6,27 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"snach/go-musthave-shortener/cmd/shortener/config"
 	"snach/go-musthave-shortener/cmd/shortener/handlers"
 	"snach/go-musthave-shortener/cmd/shortener/repository"
 	"syscall"
 	"time"
 )
 
-func serve(ctx context.Context, repo repository.Repositorier) (err error) {
+func serve(ctx context.Context) (err error) {
+	conf, err := config.MakeConf()
+	if err != nil {
+		panic(err)
+	}
+
+	repo, err := repository.NewRepository(conf.FileStoragePath)
+	if err != nil {
+		panic(err)
+	}
+
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: handlers.NewRouter(repo),
+		Addr:    conf.ServerAddress,
+		Handler: handlers.NewRouter(conf.BaseURL, repo),
 	}
 
 	go func() {
@@ -43,11 +54,6 @@ func serve(ctx context.Context, repo repository.Repositorier) (err error) {
 }
 
 func main() {
-	repo := repository.Repository{
-		Storage:    make(map[int]string),
-		CurrentInd: 0,
-	}
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
@@ -57,7 +63,7 @@ func main() {
 		cancel()
 	}()
 
-	if err := serve(ctx, &repo); err != nil {
+	if err := serve(ctx); err != nil {
 		log.Printf("failed to serve:+%v\n", err)
 	}
 }
